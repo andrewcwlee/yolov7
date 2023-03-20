@@ -5,7 +5,7 @@ val:
   - ../_dataset/FLIR_ADAS_v2/converted/valid_rgb
   - ../_dataset/FLIR_ADAS_v2/converted/valid_thermal
 test:
-  # - ../_dataset/FLIR_ADAS_v2/converted/test_rgb
+  - ../_dataset/FLIR_ADAS_v2/converted/test_rgb
   - ../_dataset/FLIR_ADAS_v2/converted/test_thermal
 
 nc: 16
