@@ -1,0 +1,12 @@
+train: 
+  - ../_dataset/FLIR_ADAS_v2/converted/train_rgb
+  # - ../_dataset/FLIR_ADAS_v2/converted/train_thermal
+val: 
+  - ../_dataset/FLIR_ADAS_v2/converted/valid_rgb
+  # - ../_dataset/FLIR_ADAS_v2/converted/valid_thermal
+test:
+  - ../_dataset/FLIR_ADAS_v2/converted/test_rgb
+  # - ../_dataset/FLIR_ADAS_v2/converted/test_thermal
+
+nc: 16
+names: ['person', 'bike', 'car', 'motor', 'bus', 'train', 'truck', 'light', 'hydrant', 'sign', 'dog', 'deer', 'skateboard', 'stroller', 'scooter', 'other vehicle']          
