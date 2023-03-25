@@ -6,6 +6,7 @@ import cv2
 import torch
 import torch.backends.cudnn as cudnn
 from numpy import random
+import PySimpleGUI as sg
 
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
@@ -13,9 +14,37 @@ from utils.general import check_img_size, check_requirements, check_imshow, non_
     scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
+import time
+import threading
+from collections import deque
 
 
-def detect(save_img=True):
+
+
+
+def null(x):
+    pass
+
+def gather_video_frame(video_frames, im0):
+    video_frames.append(cv2.imencode('.png', im0)[1].tobytes())
+
+def update_video(windows, frame):
+    windows[-3].update(data=frame)
+
+def update_text(windows, fps, start):
+    sec = int(time.time() - start)
+    hr = sec//3600
+    min = (sec%3600)//60
+    sec = (sec%3600)%60
+    windows[-2].update(f'{fps} FPS')
+    windows[-1].update(f'Uptime : {hr} Hours {min} Minutes and {sec} Seconds')
+
+def detect(windows, window, save_img=True):
+    start = time.time()
+    # cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    # cv2.moveWindow("image", 20, 30)
+    # cv2.resizeWindow("image", 1460, 1080)
+    # cv2.createTrackbar("Threshold", "image", 10, 90, null)
     source, weights, view_img, save_txt, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
@@ -67,6 +96,8 @@ def detect(save_img=True):
     old_img_b = 1
 
     t0 = time.time()
+    video_frames = deque(maxlen=50)
+
     for path, img, im0s, vid_cap in dataset:
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -96,6 +127,9 @@ def detect(save_img=True):
         if classify:
             pred = apply_classifier(pred, modelc, img, im0s)
 
+        event, values = window.read(timeout=0.1)
+        results = {'person' : 0, 'bike' : 0, 'car' : 0, 'motor' : 0, 'bus' : 0, 'train' : 0, 'truck' : 0, 'light' : 0, 'hydrant' : 0, 'sign' : 0, 'dog' : 0, 'deer' : 0, 'skateboard' : 0, 'stroller' : 0, 'scooter' : 0, 'other vehicle' : 0}
+        cats = ['person', 'bike', 'car', 'motor', 'bus', 'train', 'truck', 'light', 'hydrant', 'sign', 'dog', 'deer', 'skateboard', 'stroller', 'scooter', 'other vehicle']
         # Process detections
         frame_time = 0
         for i, det in enumerate(pred):  # detections per image
@@ -115,6 +149,7 @@ def detect(save_img=True):
                 # Print results
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
+                    results[names[int(c)]] = f'{n}'
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
                 # Write results
@@ -132,14 +167,29 @@ def detect(save_img=True):
             # Print time (inference + NMS)
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
             frame_time += (1E3 * (t3 - t1))
-
+            
             # Stream results
             if view_img:
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                fps = f'{1/(t3 - t1):.3f}'
-                cv2.putText(im0, fps, (7, 70), font, 3, (100, 255, 0), 3, cv2.LINE_AA)
-                cv2.imshow(str(p), im0)
-                cv2.waitKey(1)  # 1 millisecond
+                fps = f'{1/(t3 - t1):.1f}'
+                # threading.Thread(target=update_text, args=(windows, fps, start)).start()
+                update_text(windows, fps, start)
+                for i in range (0, 16):
+                    windows[i].update(f'{cats[i]} : {results[cats[i]]}')
+                # cv2.imshow('image', im0)
+                threading.Thread(target=gather_video_frame, args=(video_frames, im0)).start()
+                # gather_video_frame(video_frames, im0)
+                # cv2.waitKey(1)  # 1 millisecond
+                if event == 'Exit' or event == sg.WIN_CLOSED:
+                    exit()
+                opt.conf_thres = values['-THRESH SLIDER-']
+
+                if len(video_frames) > 2:
+                    frame = video_frames.popleft()
+                    # t3 = threading.Thread(target=update_video, args=(windows, frame), daemon=True)
+                    # t3.start()
+                    update_video(windows, frame)
+                # opt.conf_thres = cv2.getTrackbarPos('Threshold','image')/100
+
 
             # Save results (image with detections)
             if save_img:
@@ -161,6 +211,7 @@ def detect(save_img=True):
                         
                         vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer.write(im0)
+            
 
     print(f'{1000/(frame_time/len(pred)):.3f}fps')
     if save_txt or save_img:
@@ -196,10 +247,45 @@ if __name__ == '__main__':
     print(opt)
     #check_requirements(exclude=('pycocotools', 'thop'))
 
+    sg.theme('Default1')
+    layout = [
+        [sg.Text('Control Panel', size=(100, 1), justification='center')],
+        [sg.Image(filename='', key='-IMAGE-')],
+        [sg.Text(text='', size=(100, 1), justification='center', key='-FPS-')],
+        [sg.Text(text='Person : 0', size=(100, 1), key='-CAT PERSON-')],
+        [sg.Text(text='bike : 0', size=(100, 1), key='-CAT BIKE-')],
+        [sg.Text(text='car : 0', size=(100, 1), key='-CAT CAR-')],
+        [sg.Text(text='motor : 0', size=(100, 1), key='-CAT MOTOR-')],
+        [sg.Text(text='bus : 0', size=(100, 1), key='-CAT BUS-')],
+        [sg.Text(text='train : 0', size=(100, 1), key='-CAT TRAIN-')],
+        [sg.Text(text='truck : 0', size=(100, 1), key='-CAT TRUCK-')],
+        [sg.Text(text='light : 0', size=(100, 1), key='-CAT LIGHT-')],
+        [sg.Text(text='hydrant : 0', size=(100, 1), key='-CAT HYDRANT-')],
+        [sg.Text(text='sign : 0', size=(100, 1), key='-CAT SIGN-')],
+        [sg.Text(text='dog : 0', size=(100, 1), key='-CAT DOG-')],
+        [sg.Text(text='deer : 0', size=(100, 1), key='-CAT DEER-')],
+        [sg.Text(text='skateboard : 0', size=(100, 1), key='-CAT SKATEBOARD-')],
+        [sg.Text(text='stroller : 0', size=(100, 1), key='-CAT STROLLER-')],
+        [sg.Text(text='scooter : 0', size=(100, 1), key='-CAT SCOOTER-')],
+        [sg.Text(text='other vehicle : 0', size=(100, 1), key='-CAT OTHER-')],
+        [sg.Text('Threshold', size=(10, 1), key='-THRESH-'),
+        sg.Slider((0.1, 0.9), 0.5, 0.01, orientation='h', size=(40, 15), key='-THRESH SLIDER-')],
+        [sg.Button('Exit', size=(100, 1))],
+        [sg.Text(text='', size=(100, 1), key='-UPTIME-')]
+    ]
+    window = sg.Window('FLIR APK IR camera + YOLOv7', layout, location=(0, 0), size=(1920, 1080), keep_on_top=True, alpha_channel=1, no_titlebar=True, grab_anywhere=True)
+    screen_width, screen_height = window.get_screen_dimensions()
+    
     with torch.no_grad():
         if opt.update:  # update all models (to fix SourceChangeWarning)
             for opt.weights in ['yolov7.pt']:
                 detect()
                 strip_optimizer(opt.weights)
         else:
-            detect()
+            windows = [window['-CAT PERSON-'], window['-CAT BIKE-'], window['-CAT CAR-'], window['-CAT MOTOR-'], window['-CAT BUS-']
+                       , window['-CAT TRAIN-'], window['-CAT TRUCK-'], window['-CAT LIGHT-'], window['-CAT HYDRANT-'], window['-CAT SIGN-'], window['-CAT DOG-']
+                       , window['-CAT DEER-'], window['-CAT SKATEBOARD-'], window['-CAT STROLLER-'], window['-CAT SCOOTER-'], window['-CAT OTHER-'],
+                       window['-IMAGE-'], window['-FPS-'], window['-UPTIME-']]
+            detect(windows, window)
+
+# cats = ['person', 'bike', 'car', 'motor', 'bus', 'train', 'truck', 'light', 'hydrant', 'sign', 'dog', 'deer', 'skateboard', 'stroller', 'scooter', 'other vehicle']
