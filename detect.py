@@ -135,9 +135,9 @@ def detect(save_img=True):
 
             # Stream results
             if view_img:
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                fps = f'{1/(t3 - t1):.3f}'
-                cv2.putText(im0, fps, (7, 70), font, 3, (100, 255, 0), 3, cv2.LINE_AA)
+                # font = cv2.FONT_HERSHEY_SIMPLEX
+                # fps = f'{1/(t3 - t1):.3f}'
+                # cv2.putText(im0, fps, (7, 70), font, 3, (100, 255, 0), 3, cv2.LINE_AA)
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
 
@@ -153,6 +153,7 @@ def detect(save_img=True):
                             vid_writer.release()  # release previous video writer
                         if vid_cap:  # video
                             fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                            print(f'FPS: {fps}')
                             w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                             h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                         else:  # stream
