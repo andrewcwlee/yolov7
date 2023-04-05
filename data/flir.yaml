@@ -1,12 +1,12 @@
 train: 
-  - ../_dataset/FLIR_ADAS_v2/converted/train_rgb
-  - ../_dataset/FLIR_ADAS_v2/converted/train_thermal
+  - ../_dataset/FLIR_ADAS_v2_converted/images_rgb_train
+  - ../_dataset/FLIR_ADAS_v2_converted/images_thermal_train
 val: 
-  - ../_dataset/FLIR_ADAS_v2/converted/valid_rgb
-  - ../_dataset/FLIR_ADAS_v2/converted/valid_thermal
+  - ../_dataset/FLIR_ADAS_v2_converted/images_rgb_val
+  - ../_dataset/FLIR_ADAS_v2_converted/images_thermal_val
 test:
-  - ../_dataset/FLIR_ADAS_v2/converted/test_rgb
-  - ../_dataset/FLIR_ADAS_v2/converted/test_thermal
+  - ../_dataset/FLIR_ADAS_v2_converted/video_rgb_test
+  - ../_dataset/FLIR_ADAS_v2_converted/video_thermal_test
 
-nc: 16
-names: ['person', 'bike', 'car', 'motor', 'bus', 'train', 'truck', 'light', 'hydrant', 'sign', 'dog', 'deer', 'skateboard', 'stroller', 'scooter', 'other vehicle']          
+nc: 14
+names: ['person', 'bike', 'car', 'motor', 'bus', 'train', 'truck', 'sign', 'dog', 'deer', 'skateboard', 'stroller', 'scooter', 'other vehicle']                  

@@ -89,14 +89,16 @@ class WandbLogger():
                 model_artifact_name = WANDB_ARTIFACT_PREFIX + model_artifact_name
                 assert wandb, 'install wandb to resume wandb runs'
                 # Resume wandb-artifact:// runs here| workaround for not overwriting wandb.config
-                self.wandb_run = wandb.init(id=run_id, project=project, resume='allow')
+                self.wandb_run = wandb.init(id=run_id, project=project, resume='allow', sync_tensorboard=True)
                 opt.resume = model_artifact_name
         elif self.wandb:
+            wandb.tensorboard.patch(root_logdir="runs/train")
             self.wandb_run = wandb.init(config=opt,
                                         resume="allow",
                                         project='YOLOv7' if opt.project == 'runs/train' else Path(opt.project).stem,
                                         name=name,
                                         job_type=job_type,
+                                        sync_tensorboard=True,
                                         id=run_id) if not wandb.run else wandb.run
         if self.wandb_run:
             if self.job_type == 'Training':
